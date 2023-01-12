@@ -1,10 +1,6 @@
 name: 'Test README links'
 
 on:
-  push:
-    branches:
-      - main
-      - gh-pages
   workflow_call:
   workflow_dispatch:
 
