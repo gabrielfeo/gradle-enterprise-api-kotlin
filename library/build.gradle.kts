@@ -137,8 +137,9 @@ sourceSets {
 java {
     withSourcesJar()
     withJavadocJar()
+    // TODO Bump to latest + ensure compatibility for at least 11
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
+        languageVersion.set(JavaLanguageVersion.of(11))
         vendor.set(JvmVendorSpec.AZUL)
     }
 }
@@ -230,6 +231,8 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-moshi:2.9.0")
     implementation("com.squareup.retrofit2:converter-scalars:2.9.0")
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.slf4j:slf4j-api:2.0.11")
+    implementation("ch.qos.logback:logback-classic:1.4.14")
 }
 
 publishing {

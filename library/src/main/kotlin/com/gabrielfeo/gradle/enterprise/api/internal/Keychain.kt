@@ -1,5 +1,8 @@
 package com.gabrielfeo.gradle.enterprise.api.internal
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 internal var keychain: Keychain = RealKeychain(systemProperties)
 
 internal interface Keychain {
@@ -10,6 +13,8 @@ internal sealed interface KeychainResult {
     data class Success(val token: String) : KeychainResult
     data class Error(val description: String) : KeychainResult
 }
+
+private val logger: Logger = LoggerFactory.getLogger(RealKeychain::class.java)
 
 internal class RealKeychain(
     private val systemProperties: SystemProperties,
@@ -23,6 +28,7 @@ internal class RealKeychain(
             "security", "find-generic-password", "-w", "-a", login, "-s", entry
         ).start()
         val status = process.waitFor()
+        logger.debug("Keychain exit status: $status)")
         if (status != 0) {
             return KeychainResult.Error("exit $status")
         }

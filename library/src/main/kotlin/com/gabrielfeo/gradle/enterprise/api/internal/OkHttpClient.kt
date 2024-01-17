@@ -4,13 +4,16 @@ import com.gabrielfeo.gradle.enterprise.api.Config
 import com.gabrielfeo.gradle.enterprise.api.internal.auth.HttpBearerAuth
 import com.gabrielfeo.gradle.enterprise.api.internal.caching.CacheEnforcingInterceptor
 import com.gabrielfeo.gradle.enterprise.api.internal.caching.CacheHitLoggingInterceptor
+import com.gabrielfeo.gradle.enterprise.api.newLogger
 import okhttp3.Cache
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import okhttp3.logging.HttpLoggingInterceptor.Level.BASIC
 import okhttp3.logging.HttpLoggingInterceptor.Level.BODY
 import java.time.Duration
-import java.util.logging.Level
-import java.util.logging.Logger
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
  * Base instance just so that multiple created [Config]s will share resources by default.
@@ -40,8 +43,9 @@ internal fun buildOkHttpClient(
 }
 
 private fun OkHttpClient.Builder.addInterceptors(config: Config) {
-    if (config.debugLoggingEnabled && config.cacheConfig.cacheEnabled) {
-        addInterceptor(CacheHitLoggingInterceptor())
+    if (config.cacheConfig.cacheEnabled) {
+        val logger = config.newLogger(CacheHitLoggingInterceptor::class)
+        addInterceptor(CacheHitLoggingInterceptor(logger))
     }
 }
 
@@ -49,10 +53,17 @@ private fun OkHttpClient.Builder.addNetworkInterceptors(config: Config) {
     if (config.cacheConfig.cacheEnabled) {
         addNetworkInterceptor(buildCacheEnforcingInterceptor(config))
     }
-    if (config.debugLoggingEnabled) {
-        addNetworkInterceptor(HttpLoggingInterceptor().apply { level = BODY })
+    val httpLogger = config.newLogger(HttpLoggingInterceptor::class)
+    getHttpLoggingInterceptorForLogger(httpLogger)?.let {
+        addNetworkInterceptor(it)
     }
     addNetworkInterceptor(HttpBearerAuth("bearer", config.apiToken()))
+}
+
+private fun getHttpLoggingInterceptorForLogger(logger: Logger): Interceptor? = when {
+    logger.isDebugEnabled -> HttpLoggingInterceptor(logger = logger::debug).apply { level = BASIC }
+    logger.isTraceEnabled -> HttpLoggingInterceptor(logger = logger::debug).apply { level = BODY }
+    else -> null
 }
 
 internal fun buildCache(
@@ -60,10 +71,8 @@ internal fun buildCache(
 ): Cache {
     val cacheDir = config.cacheConfig.cacheDir
     val maxSize = config.cacheConfig.maxCacheSize
-    if (config.debugLoggingEnabled) {
-        val logger = Logger.getGlobal()
-        logger.log(Level.INFO, "HTTP cache dir: $cacheDir (max ${maxSize}B)")
-    }
+    val logger = config.newLogger(Cache::class)
+    logger.debug("HTTP cache dir: {} (max {}B)", cacheDir, maxSize)
     return Cache(cacheDir, maxSize)
 }
 

@@ -1,10 +1,13 @@
 package com.gabrielfeo.gradle.enterprise.api
 
+import ch.qos.logback.classic.Level
 import com.gabrielfeo.gradle.enterprise.api.internal.*
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.io.File
-import java.util.logging.Logger
+import kotlin.reflect.KClass
 import kotlin.time.Duration.Companion.days
 
 /**
@@ -17,6 +20,7 @@ data class Config(
      * Enables debug logging from the library. All logging is output to stderr. By default, uses
      * environment variable `GRADLE_ENTERPRISE_API_DEBUG_LOGGING` or `false`.
      */
+    // TODO Replace for LOG_LEVEL variable
     val debugLoggingEnabled: Boolean =
         env["GRADLE_ENTERPRISE_API_DEBUG_LOGGING"].toBoolean(),
 
@@ -33,7 +37,7 @@ data class Config(
      * `gradle-enterprise-api-token` or environment variable `GRADLE_ENTERPRISE_API_TOKEN`.
      */
     val apiToken: () -> String = {
-        requireEnvOrKeychainToken(debugLoggingEnabled = debugLoggingEnabled)
+        requireEnvOrKeychainToken()
     },
 
     /**
@@ -192,18 +196,20 @@ data class Config(
     )
 }
 
-internal fun requireEnvOrKeychainToken(debugLoggingEnabled: Boolean): String {
+internal fun requireEnvOrKeychainToken(): String {
     if (systemProperties["os.name"] == "Mac OS X") {
         when (val result = keychain.get("gradle-enterprise-api-token")) {
             is KeychainResult.Success -> return result.token
-            is KeychainResult.Error -> {
-                if (debugLoggingEnabled) {
-                    val logger = Logger.getGlobal()
-                    logger.info("Failed to get key from keychain (${result.description})")
-                }
-            }
+            is KeychainResult.Error -> {}
         }
     }
     return env["GRADLE_ENTERPRISE_API_TOKEN"]
         ?: error("GRADLE_ENTERPRISE_API_TOKEN is required")
+}
+
+// TODO Extract to a class and test
+internal fun Config.newLogger(cls: KClass<*>): Logger {
+    val logger = LoggerFactory.getLogger(cls.java) as ch.qos.logback.classic.Logger
+    logger.level = if (debugLoggingEnabled) Level.DEBUG else Level.INFO
+    return logger
 }
