@@ -23,5 +23,13 @@ develocity {
     buildScan {
         termsOfUseUrl = "https://gradle.com/help/legal-terms-of-use"
         termsOfUseAgree = "yes"
+        capture {
+            buildLogging = false
+            testLogging = false
+        }
+        obfuscation {
+            ipAddresses { addresses -> listOf("-redacted") }
+            hostname { host -> "-redacted-" }
+        }
     }
 }
